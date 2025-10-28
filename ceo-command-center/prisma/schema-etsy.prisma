@@ -1,0 +1,287 @@
+// ==========================================
+// ETSY ORGANIZER SCHEMA
+// Pivoted from CEO Command Center
+// ==========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER MODEL (Simplified for Etsy focus)
+// ==========================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String    // hashed with bcrypt
+  emailVerified DateTime?
+  image         String?
+
+  // Subscription
+  stripeCustomerId       String?            @unique
+  stripeSubscriptionId   String?            @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  subscriptionStatus     SubscriptionStatus @default(FREE)
+
+  // Preferences
+  theme        String  @default("light")
+  onboardingCompleted Boolean @default(false)
+
+  // Email preferences
+  emailDigestEnabled Boolean @default(true)
+  emailDigestTime    String  @default("08:00") // HH:mm format
+  emailDigestTimezone String @default("America/New_York")
+
+  // Relations
+  etsyShops    EtsyShop[]
+  stockAlerts  StockAlert[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+// ==========================================
+// ETSY SHOP MODEL
+// ==========================================
+
+model EtsyShop {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Etsy API data
+  etsyShopId    String  @unique // Etsy's shop_id
+  shopName      String
+  shopUrl       String?
+  currency      String  @default("USD")
+
+  // OAuth tokens (encrypted in production!)
+  accessToken   String  // Store encrypted
+  refreshToken  String? // Store encrypted
+  tokenExpiry   DateTime?
+
+  // Sync status
+  lastSyncedAt  DateTime?
+  syncEnabled   Boolean @default(true)
+
+  // Shop settings
+  defaultStockThreshold Int @default(5) // Alert when stock below this
+
+  // Relations
+  products Product[]
+  orders   Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([etsyShopId])
+  @@map("etsy_shops")
+}
+
+// ==========================================
+// PRODUCT MODEL (Etsy Listings)
+// ==========================================
+
+model Product {
+  id       String   @id @default(cuid())
+  shopId   String
+  shop     EtsyShop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  // Etsy listing data
+  etsyListingId String  @unique // Etsy's listing_id
+  title         String
+  description   String?
+  sku           String?
+
+  // Inventory
+  quantity         Int     @default(0)
+  stockThreshold   Int?    // Override shop default if needed
+
+  // Pricing
+  price            Decimal @db.Decimal(10, 2)
+  currency         String  @default("USD")
+
+  // Cost tracking (for profit calculation)
+  costPerUnit      Decimal? @db.Decimal(10, 2)
+
+  // Status
+  state            ProductState @default(ACTIVE)
+
+  // Images
+  mainImageUrl     String?
+
+  // Etsy specific
+  views            Int     @default(0)
+  favorites        Int     @default(0)
+
+  // Relations
+  orderItems       OrderItem[]
+  stockAlerts      StockAlert[]
+
+  // Sync
+  lastSyncedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shopId])
+  @@index([etsyListingId])
+  @@index([shopId, state])
+  @@map("products")
+}
+
+enum ProductState {
+  ACTIVE    // Live on Etsy
+  INACTIVE  // Deactivated
+  DRAFT     // Not yet published
+  SOLD_OUT  // No stock
+}
+
+// ==========================================
+// ORDER MODEL (Etsy Orders)
+// ==========================================
+
+model Order {
+  id       String   @id @default(cuid())
+  shopId   String
+  shop     EtsyShop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  // Etsy order data
+  etsyOrderId      String   @unique // Etsy's receipt_id
+  orderNumber      String   // Human-readable order number
+
+  // Customer info
+  buyerEmail       String?
+  buyerName        String?
+
+  // Amounts
+  subtotal         Decimal  @db.Decimal(10, 2)
+  shippingCost     Decimal  @db.Decimal(10, 2) @default(0)
+  taxAmount        Decimal  @db.Decimal(10, 2) @default(0)
+  total            Decimal  @db.Decimal(10, 2)
+
+  // Etsy fees (for profit calculation)
+  etsyFees         Decimal? @db.Decimal(10, 2)
+
+  // Status
+  status           OrderStatus @default(PENDING)
+
+  // Fulfillment
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  trackingNumber   String?
+  shippingCarrier  String?
+
+  // Timestamps from Etsy
+  orderDate        DateTime
+
+  // Relations
+  items            OrderItem[]
+
+  // Sync
+  lastSyncedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shopId])
+  @@index([etsyOrderId])
+  @@index([shopId, status])
+  @@index([shopId, orderDate])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING       // Payment received, not shipped
+  PROCESSING    // Being prepared
+  SHIPPED       // In transit
+  DELIVERED     // Confirmed delivery
+  CANCELED      // Canceled by buyer or seller
+  REFUNDED      // Refunded
+}
+
+// ==========================================
+// ORDER ITEM MODEL (Line items in orders)
+// ==========================================
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Item details (snapshot at time of order)
+  etsyTransactionId String  @unique // Etsy's transaction_id
+  productTitle      String
+  quantity          Int
+  pricePerUnit      Decimal @db.Decimal(10, 2)
+  totalPrice        Decimal @db.Decimal(10, 2)
+
+  // For profit calculation
+  costPerUnit       Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ==========================================
+// STOCK ALERT MODEL
+// ==========================================
+
+model StockAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Alert details
+  alertType      AlertType
+  threshold      Int       // Stock level that triggered alert
+  currentStock   Int       // Stock at time of alert
+
+  // Status
+  acknowledged   Boolean   @default(false)
+  acknowledgedAt DateTime?
+  resolved       Boolean   @default(false)
+  resolvedAt     DateTime?
+
+  // Email tracking
+  emailSent      Boolean   @default(false)
+  emailSentAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, acknowledged])
+  @@index([productId])
+  @@map("stock_alerts")
+}
+
+enum AlertType {
+  LOW_STOCK     // Stock below threshold
+  OUT_OF_STOCK  // Stock = 0
+  BACK_IN_STOCK // Stock replenished
+}
