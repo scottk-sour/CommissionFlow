@@ -35,6 +35,11 @@ model User {
   theme        String  @default("light")
   onboardingCompleted Boolean @default(false)
 
+  // Email preferences
+  emailDigestEnabled Boolean @default(true)
+  emailDigestTime    String  @default("08:00") // HH:mm format
+  emailDigestTimezone String @default("America/New_York")
+
   // Relations
   tasks         Task[]
   projects      Project[]

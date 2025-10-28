@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { EmailPreferences } from '@/components/settings/EmailPreferences'
 
 async function getUserSettings(userId: string) {
   const user = await prisma.user.findUnique({
@@ -13,6 +14,9 @@ async function getUserSettings(userId: string) {
       email: true,
       subscriptionStatus: true,
       stripeCurrentPeriodEnd: true,
+      emailDigestEnabled: true,
+      emailDigestTime: true,
+      emailDigestTimezone: true,
     },
   })
 
@@ -90,6 +94,13 @@ export default async function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Email Preferences */}
+      <EmailPreferences
+        initialEnabled={user.emailDigestEnabled}
+        initialTime={user.emailDigestTime}
+        initialTimezone={user.emailDigestTimezone}
+      />
     </div>
   )
 }
