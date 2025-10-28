@@ -33,6 +33,7 @@ model User {
   weekStartsOn Int     @default(1) // 1 = Monday
   dailyGoal    String?
   theme        String  @default("light")
+  onboardingCompleted Boolean @default(false)
 
   // Relations
   tasks         Task[]

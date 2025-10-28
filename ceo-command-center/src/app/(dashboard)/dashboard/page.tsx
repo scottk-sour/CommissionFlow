@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, Target, Calendar, TrendingUp } from 'lucide-react'
+import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider'
 
 async function getDashboardStats(userId: string) {
   const [tasksToday, tasksCompleted, activeProjects, activeHabits] = await Promise.all([
@@ -50,9 +51,15 @@ export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) return null
 
+  // Check if user has completed onboarding
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { onboardingCompleted: true },
+  })
+
   const stats = await getDashboardStats(session.user.id)
 
-  return (
+  const dashboardContent = (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">
@@ -174,5 +181,11 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  )
+
+  return (
+    <OnboardingProvider showOnboarding={!user?.onboardingCompleted}>
+      {dashboardContent}
+    </OnboardingProvider>
   )
 }
