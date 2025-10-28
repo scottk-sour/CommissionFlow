@@ -29,46 +29,46 @@ export async function POST(req: NextRequest) {
     if (createSampleData) {
       const today = startOfDay(new Date())
 
-      // Create a sample project
+      // Create a sample project - Etsy focused
       const sampleProject = await prisma.project.create({
         data: {
           userId: session.user.id,
-          name: 'Launch Product V1',
-          description: 'Build and launch the first version of our product',
+          name: 'Holiday Collection Launch',
+          description: 'Design, photograph, and list new holiday-themed products',
           category: 'BUSINESS',
           priority: 'P1_HIGH',
           status: 'ACTIVE',
           startDate: today,
-          targetEndDate: addDays(today, 90),
-          color: '#3B82F6',
+          targetEndDate: addDays(today, 45),
+          color: '#EF4444',
         },
       })
 
-      // Create a sample goal
+      // Create a sample goal - Etsy revenue focused
       const sampleGoal = await prisma.goal.create({
         data: {
           userId: session.user.id,
-          name: 'Increase Revenue by 30%',
-          description: 'Grow monthly recurring revenue to $100k',
+          name: 'Hit $10k Monthly Revenue',
+          description: 'Grow Etsy shop to $10,000 in monthly sales',
           category: 'BUSINESS',
           timeframe: 'THIS_QUARTER',
           status: 'ON_TRACK',
-          progress: 15,
+          progress: 40,
           targetDate: addDays(today, 90),
-          whyItMatters: 'Financial stability and ability to hire more team members',
+          whyItMatters: 'Reach full-time income from shop and quit day job',
           keyResults: [
             {
               id: '1',
-              description: 'Acquire 50 new customers',
+              description: 'List 50 new products',
               target: 50,
-              current: 12,
-              unit: 'customers',
+              current: 18,
+              unit: 'products',
             },
             {
               id: '2',
-              description: 'Increase average deal size',
-              target: 2000,
-              current: 1500,
+              description: 'Average $400/day in sales',
+              target: 400,
+              current: 180,
               unit: '$',
             },
           ],
@@ -81,14 +81,14 @@ export async function POST(req: NextRequest) {
         data: { goalId: sampleGoal.id },
       })
 
-      // Create sample tasks
+      // Create sample tasks - Etsy shop focused
       await prisma.task.createMany({
         data: [
           {
             userId: session.user.id,
             projectId: sampleProject.id,
-            title: 'Design landing page mockups',
-            description: 'Create wireframes and high-fidelity designs for the landing page',
+            title: 'Design 5 new holiday ornament styles',
+            description: 'Create sketches and finalize designs for winter ornament collection',
             status: 'DONE',
             priority: 'P0_CRITICAL',
             context: 'CREATIVE',
@@ -99,48 +99,58 @@ export async function POST(req: NextRequest) {
           {
             userId: session.user.id,
             projectId: sampleProject.id,
-            title: 'Implement user authentication',
-            description: 'Set up NextAuth with email/password and OAuth',
+            title: 'Photograph products with holiday setup',
+            description: 'Set up winter scene and photograph all 15 new products',
             status: 'IN_PROGRESS',
             priority: 'P0_CRITICAL',
-            context: 'DEEP_WORK',
+            context: 'CREATIVE',
             energy: 'HIGH',
-            dueDate: addDays(today, 3),
+            dueDate: addDays(today, 2),
           },
           {
             userId: session.user.id,
             projectId: sampleProject.id,
-            title: 'Write API documentation',
-            description: 'Document all API endpoints with examples',
+            title: 'Write SEO-optimized product descriptions',
+            description: 'Research keywords and write compelling descriptions for all new listings',
             status: 'TODO',
-            priority: 'P2_MEDIUM',
+            priority: 'P1_HIGH',
             context: 'ADMIN',
             energy: 'MEDIUM',
-            dueDate: addDays(today, 7),
+            dueDate: addDays(today, 5),
           },
           {
             userId: session.user.id,
-            title: 'Review quarterly goals',
-            description: 'Reflect on progress and adjust goals for next quarter',
+            title: 'Respond to customer messages',
+            description: '3 pending messages about shipping times and custom orders',
             status: 'TODO',
             priority: 'P1_HIGH',
-            context: 'DEEP_WORK',
-            energy: 'HIGH',
-            dueDate: addDays(today, 1),
+            context: 'EMAIL',
+            energy: 'LOW',
+            dueDate: addDays(today, 0),
+          },
+          {
+            userId: session.user.id,
+            title: 'Order packaging supplies',
+            description: 'Restock: gift boxes, tissue paper, thank you cards',
+            status: 'TODO',
+            priority: 'P2_MEDIUM',
+            context: 'ADMIN',
+            energy: 'LOW',
+            dueDate: addDays(today, 3),
           },
         ],
       })
 
-      // Create a sample habit
+      // Create a sample habit - Etsy shop focused
       const sampleHabit = await prisma.habit.create({
         data: {
           userId: session.user.id,
-          name: 'Morning exercise',
-          description: '30 minutes of cardio or strength training',
-          category: 'HEALTH',
+          name: 'List 1 new product daily',
+          description: 'Create and publish at least one new Etsy listing every day',
+          category: 'PRODUCTIVITY',
           frequency: 'DAILY',
           timeOfDay: 'MORNING',
-          whyImportant: 'Improves energy, focus, and overall health',
+          whyImportant: 'Consistent listings improve Etsy algorithm ranking and drive steady sales growth',
           currentStreak: 3,
           bestStreak: 7,
         },

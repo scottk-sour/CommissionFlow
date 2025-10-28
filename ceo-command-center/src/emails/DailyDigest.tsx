@@ -75,13 +75,13 @@ export default function DailyDigestEmail({
       <Preview>
         {hasContent
           ? `${tasksDueToday.length} tasks due today${overdueTasks.length > 0 ? `, ${overdueTasks.length} overdue` : ''}`
-          : 'Your daily command center summary'}
+          : 'Your daily shop summary'}
       </Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header */}
           <Heading style={h1}>Good morning, {userName}! ☀️</Heading>
-          <Text style={text}>Here's your daily command center summary</Text>
+          <Text style={text}>Here's your daily shop summary</Text>
 
           {/* Stats Bar */}
           <Section style={statsContainer}>
@@ -218,7 +218,7 @@ export default function DailyDigestEmail({
           {/* CTA */}
           <Section style={buttonContainer}>
             <Link href={`${appUrl}/dashboard`} style={button}>
-              Open Your Command Center →
+              Open Your Dashboard →
             </Link>
           </Section>
 

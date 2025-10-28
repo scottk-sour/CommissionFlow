@@ -33,10 +33,10 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />
-            Welcome to CEO Command Center!
+            Welcome to Etsy Organizer!
           </DialogTitle>
           <DialogDescription className="text-base">
-            Your strategic command center for daily excellence. Here's what you can do:
+            Your all-in-one hub for running a successful Etsy shop. Here's what you can do:
           </DialogDescription>
         </DialogHeader>
 
@@ -44,9 +44,9 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
           <Card>
             <CardHeader>
               <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
-              <CardTitle className="text-lg">P0-P3 Task Management</CardTitle>
+              <CardTitle className="text-lg">Smart Task Management</CardTitle>
               <CardDescription>
-                Prioritize work by urgency and energy level. Tackle P0 critical tasks first, organize by context (Deep Work, Calls, Email, etc.)
+                Prioritize by urgency (P0-P3). Track product photography, listing creation, customer messages, and shipping - all in one place.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -54,9 +54,9 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
           <Card>
             <CardHeader>
               <FolderKanban className="h-8 w-8 text-blue-500 mb-2" />
-              <CardTitle className="text-lg">Project Tracking</CardTitle>
+              <CardTitle className="text-lg">Product Launch Projects</CardTitle>
               <CardDescription>
-                Group related tasks into projects. Track progress automatically as you complete tasks. Link projects to your bigger goals.
+                Group tasks into projects like "Holiday Collection" or "Spring Catalog". Track progress from design to listing automatically.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -64,9 +64,9 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
           <Card>
             <CardHeader>
               <Target className="h-8 w-8 text-purple-500 mb-2" />
-              <CardTitle className="text-lg">Goals & Key Results</CardTitle>
+              <CardTitle className="text-lg">Revenue Goals</CardTitle>
               <CardDescription>
-                Set quarterly and annual goals with measurable key results. Stay aligned with what matters most. Track progress over time.
+                Set monthly/quarterly revenue targets with measurable milestones. Track listings created, sales targets, and profit goals.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -74,9 +74,9 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
           <Card>
             <CardHeader>
               <Calendar className="h-8 w-8 text-orange-500 mb-2" />
-              <CardTitle className="text-lg">Habit Tracking</CardTitle>
+              <CardTitle className="text-lg">Daily Shop Habits</CardTitle>
               <CardDescription>
-                Build consistency with daily habits. Track streaks, celebrate wins, and maintain momentum on your personal development.
+                Build consistency with habits like "List 1 product daily" or "Respond to messages within 4 hours". Track streaks and grow your shop.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -92,10 +92,10 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
               />
               <div className="flex-1">
                 <Label htmlFor="sample-data" className="cursor-pointer font-semibold">
-                  Load example data to explore features
+                  Load example Etsy shop data to explore features
                 </Label>
                 <p className="text-sm text-muted-foreground mt-1">
-                  We'll create a sample project, goal, a few tasks, and a habit so you can see how everything works. You can delete them anytime.
+                  We'll create a sample "Holiday Collection Launch" project, "$10k revenue" goal, example tasks like product photography and customer messages, and a daily listing habit. You can delete them anytime.
                 </p>
               </div>
             </div>
@@ -104,7 +104,7 @@ export function WelcomeModal({ isOpen, onComplete }: WelcomeModalProps) {
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <div className="flex-1 text-sm text-muted-foreground">
-            Tip: Start with 3-5 tasks to get a feel for the system
+            Tip: Track your top 5 shop priorities as P0/P1 tasks
           </div>
           <Button onClick={handleGetStarted} disabled={loading} size="lg">
             {loading ? 'Setting up...' : "Let's Get Started"}
