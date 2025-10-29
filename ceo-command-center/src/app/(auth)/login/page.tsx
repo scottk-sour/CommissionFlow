@@ -46,7 +46,7 @@ export default function LoginPage() {
       <CardHeader>
         <CardTitle>Welcome back</CardTitle>
         <CardDescription>
-          Sign in to your CEO Command Center account
+          Sign in to your Etsy Organizer account
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  Package,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from 'next-auth/react'
@@ -48,8 +49,8 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Target className="h-6 w-6 text-primary" />
-          <span className="font-bold">Command Center</span>
+          <Package className="h-6 w-6 text-primary" />
+          <span className="font-bold">Etsy Organizer</span>
         </Link>
       </div>
 

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Check, Target } from 'lucide-react'
+import { Check, Package } from 'lucide-react'
 
 export default function PricingPage() {
   return (
@@ -10,8 +10,8 @@ export default function PricingPage() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">CEO Command Center</span>
+            <Package className="h-6 w-6 text-primary" />
+            <span className="text-xl font-bold">Etsy Organizer</span>
           </Link>
           <nav className="flex items-center gap-4">
             <Link href="/login">
@@ -80,7 +80,7 @@ export default function PricingPage() {
                 POPULAR
               </div>
               <CardTitle>Pro Monthly</CardTitle>
-              <CardDescription>For ambitious professionals</CardDescription>
+              <CardDescription>For growing Etsy shops</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold">$19</span>
                 <span className="text-muted-foreground">/month</span>
@@ -175,7 +175,7 @@ export default function PricingPage() {
       <footer className="border-t py-8 mt-auto">
         <div className="container flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            © 2025 CEO Command Center. All rights reserved.
+            © 2025 Etsy Organizer. All rights reserved.
           </p>
         </div>
       </footer>
