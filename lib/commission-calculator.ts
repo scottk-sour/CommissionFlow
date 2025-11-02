@@ -20,7 +20,7 @@ export class CommissionCalculator {
    * 6. Check if monthly profit >= threshold needed
    * 7. If YES:
    *    - Calculate excess = monthly profit - threshold needed
-   *    - Commission = excess × commission rate
+   *    - Commission = excess Ã— commission rate
    *    - Deficit to next month = 0 (cleared!)
    * 8. If NO:
    *    - Commission = 0
@@ -41,7 +41,7 @@ export class CommissionCalculator {
       .eq('id', organizationId)
       .single()
 
-    const baseThreshold = org?.bdm_threshold_amount || 350000 // £3,500 default
+    const baseThreshold = org?.bdm_threshold_amount || 350000 // Â£3,500 default
     const commissionRate = org?.bdm_commission_rate || 1.0 // 100% default
 
     // Step 2: Get all deals paid in this month for this BDM

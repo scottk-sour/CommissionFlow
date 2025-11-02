@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/client'
+import { createRouteClient } from '@/lib/supabase/server'
 import { poundsToPence } from '@/types'
 import { commissionCalculator } from '@/lib/commission-calculator'
 

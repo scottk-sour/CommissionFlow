@@ -1,231 +1,326 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/client'
-import { poundsToPence } from '@/types'
-import { commissionCalculator } from '@/lib/commission-calculator'
+import { createServerClient } from './supabase/client'
+import type {
+  MonthlyCommissionResult,
+  TelesalesCommissionSummary,
+  MonthlyCommissionSummary,
+  Deal,
+  User,
+} from '@/types'
 
-// GET /api/deals/[id] - Get a specific deal
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteClient()
+export class CommissionCalculator {
+  /**
+   * Calculate BDM commission for a specific month using DEFICIT MODEL
+   *
+   * Logic (CORRECT WAY):
+   * 1. Get all deals paid in this month for this BDM
+   * 2. Sum the remaining profit (after telesales commission)
+   * 3. Get organization settings (base threshold + commission rate)
+   * 4. Get deficit from previous month (if any)
+   * 5. Calculate threshold needed = base threshold + previous deficit
+   * 6. Check if monthly profit >= threshold needed
+   * 7. If YES:
+   *    - Calculate excess = monthly profit - threshold needed
+   *    - Commission = excess Ã— commission rate
+   *    - Deficit to next month = 0 (cleared!)
+   * 8. If NO:
+   *    - Commission = 0
+   *    - Deficit to next month = threshold needed - monthly profit
+   */
+  async calculateMonthlyBDMCommission(
+    organizationId: string,
+    bdmId: string,
+    month: number,
+    year: number
+  ): Promise<MonthlyCommissionResult> {
+    const supabase = createServerClient()
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('organization_id')
-      .eq('id', session.user.id)
+    // Step 1: Get organization settings
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('bdm_threshold_amount, bdm_commission_rate')
+      .eq('id', organizationId)
       .single()
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
+    const baseThreshold = org?.bdm_threshold_amount || 350000 // Â£3,500 default
+    const commissionRate = org?.bdm_commission_rate || 1.0 // 100% default
 
-    const { data: deal, error } = await supabase
+    // Step 2: Get all deals paid in this month for this BDM
+    const monthStart = new Date(year, month - 1, 1)
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
+
+    const { data: dealsThisMonth, error } = await supabase
       .from('deals')
-      .select(`
-        *,
-        telesales_agent:users!deals_telesales_agent_id_fkey(id, name),
-        bdm:users!deals_bdm_id_fkey(id, name)
-      `)
-      .eq('id', params.id)
-      .eq('organization_id', user.organization_id)
-      .single()
+      .select('id, remaining_profit')
+      .eq('organization_id', organizationId)
+      .eq('bdm_id', bdmId)
+      .eq('status', 'paid')
+      .gte('month_paid', monthStart.toISOString())
+      .lte('month_paid', monthEnd.toISOString())
 
-    if (error || !deal) {
-      return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
+    if (error) {
+      console.error('Error fetching deals:', error)
+      throw new Error('Failed to fetch deals for commission calculation')
     }
 
-    return NextResponse.json({ deal })
-  } catch (error) {
-    console.error('Get deal error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Step 3: Sum the remaining profit
+    const monthlyProfit = dealsThisMonth.reduce(
+      (sum, deal) => sum + (deal.remaining_profit || 0),
+      0
+    )
+
+    // Step 4: Get deficit from previous month
+    const previousMonth = month === 1 ? 12 : month - 1
+    const previousYear = month === 1 ? year - 1 : year
+
+    const { data: previousRecord } = await supabase
+      .from('commission_records')
+      .select('deficit_to_next')
+      .eq('organization_id', organizationId)
+      .eq('bdm_id', bdmId)
+      .eq('year', previousYear)
+      .eq('month', previousMonth)
+      .single()
+
+    const previousDeficit = previousRecord?.deficit_to_next || 0
+
+    // Step 5: Calculate threshold needed this month
+    const thresholdNeeded = baseThreshold + previousDeficit
+
+    // Step 6: Check if threshold is met
+    const thresholdMet = monthlyProfit >= thresholdNeeded
+
+    let bdmCommission = 0
+    let excessOverThreshold = 0
+    let deficitToNext = 0
+
+    if (thresholdMet) {
+      // YES! They exceeded the threshold
+      excessOverThreshold = monthlyProfit - thresholdNeeded
+      bdmCommission = Math.round(excessOverThreshold * commissionRate)
+      deficitToNext = 0 // Debt cleared
+    } else {
+      // NO! Still short
+      bdmCommission = 0
+      excessOverThreshold = 0
+      deficitToNext = thresholdNeeded - monthlyProfit // Debt increases
+    }
+
+    return {
+      month,
+      year,
+      bdmId,
+      monthlyProfit,
+      previousCarryover: previousDeficit, // Keep for backwards compatibility
+      cumulativeAmount: thresholdNeeded, // Actually the threshold needed
+      thresholdAmount: baseThreshold,
+      thresholdMet,
+      bdmCommission,
+      carryoverToNext: deficitToNext, // Keep for backwards compatibility
+      dealsCount: dealsThisMonth.length,
+    }
   }
-}
 
-// PATCH /api/deals/[id] - Update a deal
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteClient()
+  /**
+   * Save commission record to database (using new deficit model)
+   */
+  async saveCommissionRecord(
+    organizationId: string,
+    result: MonthlyCommissionResult,
+    calculatedBy: string
+  ) {
+    const supabase = createServerClient()
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    // Calculate excess (if threshold met)
+    const excessOverThreshold = result.thresholdMet
+      ? result.monthlyProfit - result.cumulativeAmount
+      : 0
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('organization_id')
-      .eq('id', session.user.id)
-      .single()
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Get existing deal
-    const { data: existingDeal } = await supabase
-      .from('deals')
-      .select('*')
-      .eq('id', params.id)
-      .eq('organization_id', user.organization_id)
-      .single()
-
-    if (!existingDeal) {
-      return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
-    }
-
-    const body = await request.json()
-    const updateData: any = {}
-
-    // Handle financial updates
-    if (
-      body.dealValue !== undefined ||
-      body.buyInCost !== undefined ||
-      body.installationCost !== undefined ||
-      body.miscCosts !== undefined
-    ) {
-      const dealValue = body.dealValue !== undefined ? poundsToPence(body.dealValue) : existingDeal.deal_value
-      const buyInCost = body.buyInCost !== undefined ? poundsToPence(body.buyInCost) : existingDeal.buy_in_cost
-      const installationCost = body.installationCost !== undefined ? poundsToPence(body.installationCost) : existingDeal.installation_cost
-      const miscCosts = body.miscCosts !== undefined ? poundsToPence(body.miscCosts) : existingDeal.misc_costs
-
-      const initialProfit = dealValue - buyInCost - installationCost - miscCosts
-      const telesalesCommission = Math.round(initialProfit * 0.1)
-      const remainingProfit = initialProfit - telesalesCommission
-
-      if (initialProfit < 0) {
-        return NextResponse.json(
-          { error: 'Costs cannot exceed deal value' },
-          { status: 400 }
-        )
-      }
-
-      updateData.deal_value = dealValue
-      updateData.buy_in_cost = buyInCost
-      updateData.installation_cost = installationCost
-      updateData.misc_costs = miscCosts
-      updateData.initial_profit = initialProfit
-      updateData.telesales_commission = telesalesCommission
-      updateData.remaining_profit = remainingProfit
-    }
-
-    // Handle status update
-    if (body.status !== undefined && body.status !== existingDeal.status) {
-      updateData.status = body.status
-
-      const now = new Date().toISOString()
-
-      switch (body.status) {
-        case 'signed':
-          updateData.month_signed = updateData.month_signed || now
-          break
-        case 'installed':
-          updateData.month_installed = updateData.month_installed || now
-          break
-        case 'invoiced':
-          updateData.month_invoiced = updateData.month_invoiced || now
-          break
-        case 'paid':
-          updateData.month_paid = body.monthPaid || now
-
-          // CRITICAL: Recalculate commissions when deal is marked as paid
-          setTimeout(async () => {
-            try {
-              await commissionCalculator.recalculateOnDealPaid(params.id, session.user.id)
-            } catch (err) {
-              console.error('Failed to recalculate commissions:', err)
-            }
-          }, 100)
-          break
-      }
-    }
-
-    // Other fields
-    if (body.customerName !== undefined) updateData.customer_name = body.customerName
-    if (body.telesalesAgentId !== undefined) updateData.telesales_agent_id = body.telesalesAgentId
-    if (body.bdmId !== undefined) updateData.bdm_id = body.bdmId
-    if (body.notes !== undefined) updateData.notes = body.notes
-
-    // Update deal
-    const { data: deal, error } = await supabase
-      .from('deals')
-      .update(updateData)
-      .eq('id', params.id)
-      .eq('organization_id', user.organization_id)
-      .select(`
-        *,
-        telesales_agent:users!deals_telesales_agent_id_fkey(id, name),
-        bdm:users!deals_bdm_id_fkey(id, name)
-      `)
+    const { data, error } = await supabase
+      .from('commission_records')
+      .upsert(
+        {
+          organization_id: organizationId,
+          bdm_id: result.bdmId,
+          month: result.month,
+          year: result.year,
+          monthly_profit: result.monthlyProfit,
+          previous_deficit: result.previousCarryover, // Using old field name for new meaning
+          threshold_needed: result.cumulativeAmount, // This is threshold needed (base + deficit)
+          base_threshold: result.thresholdAmount,
+          threshold_met: result.thresholdMet,
+          excess_over_threshold: excessOverThreshold,
+          bdm_commission: result.bdmCommission,
+          deficit_to_next: result.carryoverToNext, // Using old field name for new meaning
+          deals_count: result.dealsCount,
+          calculated_by: calculatedBy,
+        },
+        {
+          onConflict: 'organization_id,bdm_id,year,month',
+        }
+      )
+      .select()
       .single()
 
     if (error) {
-      console.error('Error updating deal:', error)
-      return NextResponse.json({ error: 'Failed to update deal' }, { status: 500 })
+      console.error('Error saving commission record:', error)
+      throw new Error('Failed to save commission record')
     }
 
-    return NextResponse.json({ deal })
-  } catch (error) {
-    console.error('Update deal error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return data
   }
-}
 
-// DELETE /api/deals/[id] - Delete a deal
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteClient()
+  /**
+   * Calculate telesales commissions for a month
+   */
+  async calculateTelesalesCommissions(
+    organizationId: string,
+    month: number,
+    year: number
+  ): Promise<TelesalesCommissionSummary[]> {
+    const supabase = createServerClient()
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const monthStart = new Date(year, month - 1, 1)
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999)
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('organization_id')
-      .eq('id', session.user.id)
-      .single()
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    const { error } = await supabase
+    const { data: deals, error } = await supabase
       .from('deals')
-      .delete()
-      .eq('id', params.id)
-      .eq('organization_id', user.organization_id)
+      .select(
+        `
+        id,
+        initial_profit,
+        telesales_commission,
+        telesales_agent_id,
+        telesales_agent:users!deals_telesales_agent_id_fkey(id, name)
+      `
+      )
+      .eq('organization_id', organizationId)
+      .eq('status', 'paid')
+      .gte('month_paid', monthStart.toISOString())
+      .lte('month_paid', monthEnd.toISOString())
 
     if (error) {
-      console.error('Error deleting deal:', error)
-      return NextResponse.json({ error: 'Failed to delete deal' }, { status: 500 })
+      console.error('Error fetching telesales deals:', error)
+      throw new Error('Failed to fetch telesales deals')
     }
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Delete deal error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Group by telesales agent
+    const commissionsByAgent: Record<string, TelesalesCommissionSummary> = {}
+
+    deals.forEach((deal: any) => {
+      const agentId = deal.telesales_agent_id
+      const agentName = deal.telesales_agent?.name || 'Unknown'
+
+      if (!commissionsByAgent[agentId]) {
+        commissionsByAgent[agentId] = {
+          agentId,
+          agentName,
+          dealsCount: 0,
+          totalProfit: 0,
+          totalCommission: 0,
+        }
+      }
+
+      commissionsByAgent[agentId].dealsCount++
+      commissionsByAgent[agentId].totalProfit += deal.initial_profit || 0
+      commissionsByAgent[agentId].totalCommission += deal.telesales_commission || 0
+    })
+
+    return Object.values(commissionsByAgent)
+  }
+
+  /**
+   * Get complete commission summary for entire organization for a month
+   */
+  async getMonthlyCommissionSummary(
+    organizationId: string,
+    month: number,
+    year: number
+  ): Promise<MonthlyCommissionSummary> {
+    const supabase = createServerClient()
+
+    // Get telesales commissions
+    const telesalesCommissions = await this.calculateTelesalesCommissions(
+      organizationId,
+      month,
+      year
+    )
+
+    // Get all BDMs in the organization
+    const { data: bdms, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('role', 'bdm')
+      .eq('active', true)
+
+    if (error) {
+      console.error('Error fetching BDMs:', error)
+      throw new Error('Failed to fetch BDMs')
+    }
+
+    // Calculate BDM commissions
+    const bdmCommissions = await Promise.all(
+      bdms.map((bdm) =>
+        this.calculateMonthlyBDMCommission(organizationId, bdm.id, month, year)
+      )
+    )
+
+    // Calculate totals
+    const totalTelesalesCommission = telesalesCommissions.reduce(
+      (sum, agent) => sum + agent.totalCommission,
+      0
+    )
+
+    const totalBDMCommission = bdmCommissions.reduce(
+      (sum, bdm) => sum + bdm.bdmCommission,
+      0
+    )
+
+    return {
+      month,
+      year,
+      telesales: telesalesCommissions,
+      bdms: bdmCommissions,
+      totalTelesalesCommission,
+      totalBDMCommission,
+      totalCommissions: totalTelesalesCommission + totalBDMCommission,
+    }
+  }
+
+  /**
+   * Recalculate commissions when a deal is marked as paid
+   */
+  async recalculateOnDealPaid(dealId: string, userId: string) {
+    const supabase = createServerClient()
+
+    // Get the deal
+    const { data: deal, error } = await supabase
+      .from('deals')
+      .select('organization_id, bdm_id, month_paid')
+      .eq('id', dealId)
+      .single()
+
+    if (error || !deal || !deal.month_paid) {
+      console.error('Error fetching deal:', error)
+      return
+    }
+
+    const paidDate = new Date(deal.month_paid)
+    const month = paidDate.getMonth() + 1
+    const year = paidDate.getFullYear()
+
+    // Recalculate BDM commission for this month
+    const bdmCommission = await this.calculateMonthlyBDMCommission(
+      deal.organization_id,
+      deal.bdm_id,
+      month,
+      year
+    )
+
+    // Save the record
+    await this.saveCommissionRecord(deal.organization_id, bdmCommission, userId)
   }
 }
+
+// Export singleton instance
+export const commissionCalculator = new CommissionCalculator()

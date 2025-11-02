@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -110,7 +110,7 @@ export default async function TeamPage() {
             <CardTitle className="text-sm">BDM (Business Development Manager)</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-gray-600">
-            <p>Receives remaining profit after telesales commission, with £3,500 monthly threshold and rollover mechanism.</p>
+            <p>Receives remaining profit after telesales commission, with Â£3,500 monthly threshold and rollover mechanism.</p>
           </CardContent>
         </Card>
       </div>

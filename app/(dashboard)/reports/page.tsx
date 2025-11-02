@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, penceToPounds } from '@/types'
 import { commissionCalculator } from '@/lib/commission-calculator'
@@ -46,7 +46,7 @@ export default async function ReportsPage() {
   if (!report) {
     return (
       <EmptyState
-        icon="📊"
+        icon="ðŸ“Š"
         title="Unable to load commission report"
         description="There was an issue loading your commission data. Please try again later."
         action={{
@@ -179,7 +179,7 @@ export default async function ReportsPage() {
       {/* BDM Breakdown */}
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="text-xl">BDM Commissions (Threshold: £3,500)</CardTitle>
+          <CardTitle className="text-xl">BDM Commissions (Threshold: Â£3,500)</CardTitle>
         </CardHeader>
         <CardContent>
           {report.bdms.length === 0 ? (
@@ -202,7 +202,7 @@ export default async function ReportsPage() {
                       <h3 className="font-semibold text-lg mb-2">Commission Calculation</h3>
                       <div className="space-y-1 text-sm">
                         <p><span className="text-gray-600">Cumulative amount:</span> <span className="font-bold">{formatCurrency(penceToPounds(bdm.cumulativeAmount))}</span></p>
-                        <p><span className="text-gray-600">Threshold (£3,500):</span> <span className={bdm.thresholdMet ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{bdm.thresholdMet ? '✅ MET' : '❌ NOT MET'}</span></p>
+                        <p><span className="text-gray-600">Threshold (Â£3,500):</span> <span className={bdm.thresholdMet ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{bdm.thresholdMet ? 'âœ… MET' : 'âŒ NOT MET'}</span></p>
                         {bdm.thresholdMet ? (
                           <p className="text-lg"><span className="text-gray-600">Commission payable:</span> <span className="font-bold text-green-600">{formatCurrency(penceToPounds(bdm.bdmCommission))}</span></p>
                         ) : (

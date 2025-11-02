@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,7 +65,7 @@ export default async function DealsPage() {
         <CardContent>
           {deals.length === 0 ? (
             <EmptyState
-              icon="💼"
+              icon="ðŸ’¼"
               title="No deals yet"
               description="Get started by creating your first deal to track commissions and pipeline progress."
               action={{

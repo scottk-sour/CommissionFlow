@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/client'
+import { createServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { NavLink } from '@/components/dashboard/nav-link'
@@ -38,7 +38,7 @@ export default async function DashboardLayout({
           <div className="flex justify-between h-16">
             <div className="flex">
               <Link href="/app/dashboard" className="flex items-center hover:opacity-80 transition-opacity">
-                <span className="text-2xl font-bold">💷</span>
+                <span className="text-2xl font-bold">ðŸ’·</span>
                 <span className="ml-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   CommissionFlow
                 </span>
