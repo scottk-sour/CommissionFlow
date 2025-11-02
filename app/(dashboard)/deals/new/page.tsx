@@ -43,13 +43,13 @@ export default function NewDealPage() {
     async function loadUsers() {
       const supabase = createClient()
 
-      const { data: session } = await supabase.auth.getSession()
-      if (!session.data.session) return
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) return
 
       const { data: currentUser } = await supabase
         .from('users')
         .select('organization_id')
-        .eq('id', session.data.session.user.id)
+        .eq('id', data.session!.user.id)
         .single()
 
       if (!currentUser) return
@@ -169,12 +169,12 @@ export default function NewDealPage() {
           {/* Financial Info */}
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="text-lg">💰 Financial Details</CardTitle>
+              <CardTitle className="text-lg">Ã°Å¸â€™Â° Financial Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="dealValue">Deal Value (£) *</Label>
+                  <Label htmlFor="dealValue">Deal Value (Ã‚Â£) *</Label>
                   <Input
                     id="dealValue"
                     type="number"
@@ -189,7 +189,7 @@ export default function NewDealPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="buyInCost">Buy-in Cost (£) *</Label>
+                  <Label htmlFor="buyInCost">Buy-in Cost (Ã‚Â£) *</Label>
                   <Input
                     id="buyInCost"
                     type="number"
@@ -204,7 +204,7 @@ export default function NewDealPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="installationCost">Installation Cost (£) *</Label>
+                  <Label htmlFor="installationCost">Installation Cost (Ã‚Â£) *</Label>
                   <Input
                     id="installationCost"
                     type="number"
@@ -219,7 +219,7 @@ export default function NewDealPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="miscCosts">Misc Costs (£)</Label>
+                  <Label htmlFor="miscCosts">Misc Costs (Ã‚Â£)</Label>
                   <Input
                     id="miscCosts"
                     type="number"
@@ -263,7 +263,7 @@ export default function NewDealPage() {
           {/* Team Assignment */}
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="text-lg">👥 Team Assignment</CardTitle>
+              <CardTitle className="text-lg">Ã°Å¸â€˜Â¥ Team Assignment</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
