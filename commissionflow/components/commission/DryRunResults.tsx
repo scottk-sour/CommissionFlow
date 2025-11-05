@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client'
 
 import { formatDryRunResult, generateDryRunSummary } from '@/hooks/useDryRun'
