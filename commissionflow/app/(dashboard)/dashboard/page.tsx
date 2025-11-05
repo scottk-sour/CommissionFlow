@@ -191,7 +191,7 @@ function PipelineStatus({ status, count }: { status: string; count: number }) {
     paid: { label: 'Paid', color: 'bg-emerald-100 text-emerald-800' },
   }
 
-  const config: { label: string; color: string } = statusConfig[status] || statusConfig.to_do
+  const config = (statusConfig[status] || statusConfig.to_do) as { label: string; color: string }
 
   return (
     <div className="text-center">
