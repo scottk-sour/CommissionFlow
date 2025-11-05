@@ -354,12 +354,12 @@ ALTER TABLE sales_activities ENABLE ROW LEVEL SECURITY;
 -- Commission Rules: Only directors can manage, everyone can view
 CREATE POLICY "Users can view organization rules"
   ON commission_rules FOR SELECT
-  USING (organization_id = auth.user_organization_id());
+  USING (organization_id = public.user_organization_id());
 
 CREATE POLICY "Directors can manage rules"
   ON commission_rules FOR ALL
   USING (
-    organization_id = auth.user_organization_id() AND
+    organization_id = public.user_organization_id() AND
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'director')
   );
 
@@ -367,7 +367,7 @@ CREATE POLICY "Directors can manage rules"
 CREATE POLICY "Users can view own calculations"
   ON commission_calculations FOR SELECT
   USING (
-    organization_id = auth.user_organization_id() AND
+    organization_id = public.user_organization_id() AND
     (
       user_id = auth.uid() OR  -- Own calculations
       EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('manager', 'accounts', 'director'))  -- Privileged roles
@@ -377,7 +377,7 @@ CREATE POLICY "Users can view own calculations"
 CREATE POLICY "Managers can create calculations"
   ON commission_calculations FOR INSERT
   WITH CHECK (
-    organization_id = auth.user_organization_id() AND
+    organization_id = public.user_organization_id() AND
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('manager', 'director'))
   );
 
@@ -385,7 +385,7 @@ CREATE POLICY "Managers can create calculations"
 CREATE POLICY "Users can view own activities"
   ON sales_activities FOR SELECT
   USING (
-    organization_id = auth.user_organization_id() AND
+    organization_id = public.user_organization_id() AND
     (
       user_id = auth.uid() OR
       EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('manager', 'director'))
@@ -395,7 +395,7 @@ CREATE POLICY "Users can view own activities"
 CREATE POLICY "Users can create own activities"
   ON sales_activities FOR INSERT
   WITH CHECK (
-    organization_id = auth.user_organization_id() AND
+    organization_id = public.user_organization_id() AND
     user_id = auth.uid()
   );
 
