@@ -1,6 +1,6 @@
 import { createServerClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, penceToPounds } from '@/types'
+import { formatCurrency, penceToPounds, Deal } from '@/types'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
@@ -34,12 +34,14 @@ async function getDashboardData() {
     .eq('status', 'paid')
     .gte('month_paid', monthStart.toISOString())
     .lte('month_paid', monthEnd.toISOString())
+    .returns<Deal[]>()
 
   // Get all deals by status
   const { data: allDeals } = await supabase
     .from('deals')
     .select('status')
     .eq('organization_id', user.organization_id)
+    .returns<Pick<Deal, 'status'>[]>()
 
   // Calculate metrics
   const totalRevenue = paidDeals?.reduce((sum, deal) => sum + deal.deal_value, 0) || 0
