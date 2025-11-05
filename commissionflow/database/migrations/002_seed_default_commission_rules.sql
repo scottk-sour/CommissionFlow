@@ -1,30 +1,26 @@
 -- =====================================================
 -- PHASE 1A: SEED DEFAULT COMMISSION RULES
 -- Migration: 002
--- Description: Create default rules matching current hardcoded logic
+-- Description: Create default starter rules for each role
 -- =====================================================
 
 -- This script creates default commission rules for all existing organizations
--- These rules replicate the current hardcoded behavior:
--- - Telesales: 10% of initial profit
--- - BDM/Team Lead: £3,500 monthly threshold with deficit carryover
+-- These are STARTER rules that users can customize
 
 DO $$
 DECLARE
   org RECORD;
-  telesales_rule_id UUID;
-  team_lead_rule_id UUID;
+  rule_count INTEGER := 0;
 BEGIN
   RAISE NOTICE 'Seeding default commission rules...';
-  RAISE NOTICE '';
 
   -- Loop through all organizations
-  FOR org IN SELECT id, name, bdm_threshold_amount, bdm_commission_rate FROM organizations
+  FOR org IN SELECT id, name FROM organizations
   LOOP
     RAISE NOTICE 'Processing organization: %', org.name;
 
     -- =====================================================
-    -- Rule 1: Telesales Base Commission (10%)
+    -- Rule 1: Manager - 20% of profit
     -- =====================================================
     INSERT INTO commission_rules (
       organization_id,
@@ -37,28 +33,24 @@ BEGIN
       config,
       priority,
       stacking_behavior,
-      is_absolute,
-      created_by
+      is_absolute
     ) VALUES (
       org.id,
-      'Telesales Base Commission (10%)',
-      'Standard 10% commission on initial profit for all sales reps. Migrated from legacy system.',
+      'Manager Standard Commission',
+      'Standard 20% commission on profit for managers',
       'percentage',
-      'sales_rep',  -- Will apply after role migration (telesales → sales_rep)
+      'manager',
       true,
-      '2020-01-01',  -- Retroactive to capture all historical data
-      jsonb_build_object('rate', 0.10),  -- 10%
-      0,  -- Base priority
-      'replace',  -- Can be overridden by higher priority rules
-      false,  -- Not absolute
-      NULL  -- System-created
-    )
-    RETURNING id INTO telesales_rule_id;
-
-    RAISE NOTICE '  ✅ Created: Telesales Base (10%) - Rule ID: %', telesales_rule_id;
+      CURRENT_DATE,
+      jsonb_build_object('rate', 0.20),
+      0,
+      'replace',
+      false
+    );
+    rule_count := rule_count + 1;
 
     -- =====================================================
-    -- Rule 2: Team Lead Threshold Commission
+    -- Rule 2: Director - 15% of profit
     -- =====================================================
     INSERT INTO commission_rules (
       organization_id,
@@ -71,42 +63,98 @@ BEGIN
       config,
       priority,
       stacking_behavior,
-      is_absolute,
-      created_by
+      is_absolute
     ) VALUES (
       org.id,
-      'Team Lead Threshold Commission (£3,500)',
-      'Monthly threshold of £3,500 with deficit carryover. Must exceed threshold to earn commission. Migrated from legacy BDM system.',
-      'threshold',
-      'team_lead',  -- Will apply after role migration (bdm → team_lead)
+      'Director Standard Commission',
+      'Standard 15% commission on profit for directors',
+      'percentage',
+      'director',
       true,
-      '2020-01-01',
-      jsonb_build_object(
-        'threshold', COALESCE(org.bdm_threshold_amount, 350000),  -- £3,500 in pence (or org override)
-        'rate', COALESCE(org.bdm_commission_rate, 1.0),  -- 100% of excess (or org override)
-        'carry_deficit', true,  -- Deficit carries to next month
-        'calculation_base', 'remaining_profit'  -- Calculate from remaining profit after telesales commission
-      ),
-      0,  -- Base priority
+      CURRENT_DATE,
+      jsonb_build_object('rate', 0.15),
+      0,
       'replace',
-      false,
-      NULL
-    )
-    RETURNING id INTO team_lead_rule_id;
+      false
+    );
+    rule_count := rule_count + 1;
 
-    RAISE NOTICE '  ✅ Created: Team Lead Threshold (£%.2f) - Rule ID: %',
-      COALESCE(org.bdm_threshold_amount, 350000)::DECIMAL / 100,
-      team_lead_rule_id;
+    -- =====================================================
+    -- Rule 3: Field Rep - Per Activity + Per Deal
+    -- =====================================================
+    INSERT INTO commission_rules (
+      organization_id,
+      name,
+      description,
+      rule_type,
+      applies_to_role,
+      active,
+      effective_from,
+      config,
+      priority,
+      stacking_behavior,
+      is_absolute
+    ) VALUES (
+      org.id,
+      'Field Rep Activity Commission',
+      'Flat rate per appointment and per deal for field reps',
+      'flat',
+      'sales_rep',
+      true,
+      CURRENT_DATE,
+      jsonb_build_object(
+        'amount_per_appointment', 5000,
+        'amount_per_deal', 20000
+      ),
+      0,
+      'replace',
+      false
+    );
+    rule_count := rule_count + 1;
 
-    RAISE NOTICE '';
+    -- =====================================================
+    -- Rule 4: Telesales - Per Activity + Per Deal
+    -- =====================================================
+    INSERT INTO commission_rules (
+      organization_id,
+      name,
+      description,
+      rule_type,
+      applies_to_role,
+      active,
+      effective_from,
+      config,
+      priority,
+      stacking_behavior,
+      is_absolute
+    ) VALUES (
+      org.id,
+      'Telesales Activity Commission',
+      'Flat rate per appointment and per deal for telesales reps',
+      'flat',
+      'sales_rep',
+      true,
+      CURRENT_DATE,
+      jsonb_build_object(
+        'amount_per_appointment', 2500,
+        'amount_per_deal', 15000
+      ),
+      0,
+      'replace',
+      false
+    );
+    rule_count := rule_count + 1;
+
+    RAISE NOTICE '  Created 4 default rules for %', org.name;
   END LOOP;
 
-  RAISE NOTICE '🎉 Default rules seeded for all organizations!';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Success! Created % rules total', rule_count;
   RAISE NOTICE '';
   RAISE NOTICE 'Next steps:';
-  RAISE NOTICE '  1. Migrate user roles (telesales → sales_rep, bdm → team_lead)';
-  RAISE NOTICE '  2. Enable flexible rules: UPDATE organizations SET use_flexible_rules = true WHERE id = ''your-org-id'';';
-  RAISE NOTICE '  3. Test calculations with new engine';
+  RAISE NOTICE '  1. Navigate to /commission-rules to view and customize';
+  RAISE NOTICE '  2. Use the what-if calculator to test scenarios';
+  RAISE NOTICE '  3. Run dry run tests before deploying to production';
 END $$;
 
 -- =====================================================
