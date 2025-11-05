@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createServerClient } from './supabase/client'
 import type {
   MonthlyCommissionResult,

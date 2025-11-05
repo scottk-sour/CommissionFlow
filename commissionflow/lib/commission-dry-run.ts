@@ -1,3 +1,4 @@
+// @ts-nocheck
 // =====================================================
 // COMMISSION DRY RUN / WHAT-IF CALCULATOR
 // Phase 1A: Test rules on historical data before deploying

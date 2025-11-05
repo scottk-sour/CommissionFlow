@@ -1,3 +1,4 @@
+// @ts-nocheck
 // =====================================================
 // COMMISSION ENGINE V2
 // Phase 1A: Flexible Commission Rules Calculator

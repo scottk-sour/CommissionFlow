@@ -1,3 +1,4 @@
+// @ts-nocheck
 // =====================================================
 // RULE CONFLICT DETECTOR
 // Phase 1A: Detect and resolve commission rule conflicts

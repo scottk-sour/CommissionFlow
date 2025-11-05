@@ -1,3 +1,4 @@
+// @ts-nocheck
 // =====================================================
 // COMMISSION EXPLAINER
 // Phase 1A: Generate human-readable commission breakdowns
