@@ -131,3 +131,12 @@ export function penceToPounds(pence: number): number {
 export function poundsToPence(pounds: number): number {
   return Math.round(pounds * 100)
 }
+
+// Helper to format pence as currency (£X,XXX.XX)
+export function formatCurrency(pence: number): string {
+  const pounds = penceToPounds(pence)
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+  }).format(pounds)
+}

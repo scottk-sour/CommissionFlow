@@ -10,8 +10,16 @@ export function createClient() {
   )
 }
 
-// Simple client for general use
-export function getSupabaseClient() {
+// Server component and API route client
+export function createServerClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+
+// API route client (alias for compatibility)
+export function createRouteClient() {
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
