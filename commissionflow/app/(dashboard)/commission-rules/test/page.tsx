@@ -36,6 +36,11 @@ export default function TestRulesPage() {
       return
     }
 
+    if (!testPeriodStart || !testPeriodEnd) {
+      alert('Please select a test period.')
+      return
+    }
+
     // Convert active rules to proposed rules format
     const proposedRules = rules.map(rule => ({
       name: rule.name,
