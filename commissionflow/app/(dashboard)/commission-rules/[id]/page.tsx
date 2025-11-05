@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'next'
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCommissionRule } from '@/hooks/useCommissionRules'
 import { RuleForm } from '@/components/commission/RuleForm'
