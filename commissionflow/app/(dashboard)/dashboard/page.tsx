@@ -17,7 +17,7 @@ async function getDashboardData() {
     .from('users')
     .select('organization_id')
     .eq('id', session.user.id)
-    .single()
+    .single<{ organization_id: string }>()
 
   if (!user || !user.organization_id) return null
 
