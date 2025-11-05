@@ -19,7 +19,7 @@ async function getDashboardData() {
     .eq('id', session.user.id)
     .single()
 
-  if (!user) return null
+  if (!user || !user.organization_id) return null
 
   // Get current month deals
   const now = new Date()
