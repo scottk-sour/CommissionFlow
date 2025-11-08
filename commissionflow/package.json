@@ -1,3 +1,9 @@
+Go to: https://github.com/scottk-sour/CommissionFlow/edit/main/commissionflow/package.json
+
+Select all the text (Ctrl+A) and delete it
+
+Paste this corrected version:
+
 {
   "name": "commissionflow",
   "version": "1.0.0",
@@ -9,6 +15,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-checkbox": "^1.0.4",
