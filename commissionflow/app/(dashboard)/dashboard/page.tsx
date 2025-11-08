@@ -1,93 +1,55 @@
 // @ts-nocheck
 import { createServerClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, penceToPounds, Deal } from '@/types'
-import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatCurrency, penceToPounds, DEAL_STATUS_CONFIG } from '@/types'
+import { EmptyState } from '@/components/ui/empty-state'
+import Link from 'next/link'
 
-async function getDashboardData() {
+async function getDeals() {
   const supabase = createServerClient()
 
   const {
     data: { session },
   } = await supabase.auth.getSession()
 
-  if (!session) return null
+  if (!session) return []
 
   const { data: user } = await supabase
     .from('users')
     .select('organization_id')
     .eq('id', session.user.id)
-    .single<{ organization_id: string }>()
+    .single()
 
-  if (!user || !user.organization_id) return null
+  if (!user) return []
 
-  // Get current month deals
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-
-  // Get paid deals this month
-  const { data: paidDeals } = await supabase
+  const { data: deals } = await supabase
     .from('deals')
-    .select('*')
+    .select(`
+      *,
+      telesales_agent:users!deals_telesales_agent_id_fkey(id, name),
+      bdm:users!deals_bdm_id_fkey(id, name)
+    `)
     .eq('organization_id', user.organization_id)
-    .eq('status', 'paid')
-    .gte('month_paid', monthStart.toISOString())
-    .lte('month_paid', monthEnd.toISOString())
-    .returns<Deal[]>()
+    .order('created_at', { ascending: false })
+    .limit(50)
 
-  // Get all deals by status
-  const { data: allDeals } = await supabase
-    .from('deals')
-    .select('status')
-    .eq('organization_id', user.organization_id)
-    .returns<Pick<Deal, 'status'>[]>()
-
-  // Calculate metrics
-  const totalRevenue = paidDeals?.reduce((sum, deal) => sum + deal.deal_value, 0) || 0
-  const totalProfit = paidDeals?.reduce((sum, deal) => sum + deal.initial_profit, 0) || 0
-  const totalCommissions = paidDeals?.reduce(
-    (sum, deal) => sum + deal.telesales_commission + deal.remaining_profit,
-    0
-  ) || 0
-
-  // Count deals by status
-  const dealsByStatus = allDeals?.reduce((acc: any, deal) => {
-    acc[deal.status] = (acc[deal.status] || 0) + 1
-    return acc
-  }, {})
-
-  return {
-    totalRevenue,
-    totalProfit,
-    totalCommissions,
-    paidDealsCount: paidDeals?.length || 0,
-    dealsByStatus: dealsByStatus || {},
-  }
+  return deals || []
 }
 
-export default async function DashboardPage() {
-  const data = await getDashboardData()
-
-  if (!data) {
-    return <div>Loading...</div>
-  }
-
-  const currentMonth = new Date().toLocaleDateString('en-GB', {
-    month: 'long',
-    year: 'numeric',
-  })
+export default async function DealsPage() {
+  const deals = await getDeals()
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-            Dashboard
+            Deals
           </h1>
-          <p className="text-gray-600 mt-1">Overview for {currentMonth}</p>
+          <p className="text-gray-600 mt-1">Manage your sales pipeline</p>
         </div>
         <Link href="/deals/new">
           <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow">
@@ -96,107 +58,72 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Total Revenue"
-          value={formatCurrency(penceToPounds(data.totalRevenue))}
-          subtitle="Paid this month"
-        />
-        <MetricCard
-          title="Total Profit"
-          value={formatCurrency(penceToPounds(data.totalProfit))}
-          subtitle="From paid deals"
-        />
-        <MetricCard
-          title="Commissions Due"
-          value={formatCurrency(penceToPounds(data.totalCommissions))}
-          subtitle="Telesales + BDM"
-        />
-        <MetricCard
-          title="Deals Paid"
-          value={data.paidDealsCount.toString()}
-          subtitle="This month"
-        />
-      </div>
-
-      {/* Pipeline Overview */}
+      {/* Deals Table */}
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="text-xl">Deal Pipeline</CardTitle>
+          <CardTitle className="text-xl">All Deals</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <PipelineStatus status="to_do" count={data.dealsByStatus.to_do || 0} />
-            <PipelineStatus status="done" count={data.dealsByStatus.done || 0} />
-            <PipelineStatus status="signed" count={data.dealsByStatus.signed || 0} />
-            <PipelineStatus status="installed" count={data.dealsByStatus.installed || 0} />
-            <PipelineStatus status="invoiced" count={data.dealsByStatus.invoiced || 0} />
-            <PipelineStatus status="paid" count={data.dealsByStatus.paid || 0} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="text-xl">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Link href="/deals">
-            <Button variant="outline">View All Deals</Button>
-          </Link>
-          <Link href="/reports">
-            <Button variant="outline">Generate Commission Report</Button>
-          </Link>
-          <Link href="/team">
-            <Button variant="outline">Manage Team</Button>
-          </Link>
+          {deals.length === 0 ? (
+            <EmptyState
+              icon="💼"
+              title="No deals yet"
+              description="Get started by creating your first deal to track commissions and pipeline progress."
+              action={{
+                label: '+ Add New Deal',
+                href: '/deals/new',
+              }}
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Deal #</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Value</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Profit</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Telesales</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">BDM</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deals.map((deal: any) => (
+                    <tr key={deal.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4 font-mono text-sm">{deal.deal_number}</td>
+                      <td className="py-3 px-4">{deal.customer_name}</td>
+                      <td className="py-3 px-4 font-semibold">
+                        {formatCurrency(penceToPounds(deal.deal_value))}
+                      </td>
+                      <td className="py-3 px-4 text-green-600 font-semibold">
+                        {formatCurrency(penceToPounds(deal.initial_profit))}
+                      </td>
+                      <td className="py-3 px-4 text-sm">{deal.telesales_agent?.name}</td>
+                      <td className="py-3 px-4 text-sm">{deal.bdm?.name}</td>
+                      <td className="py-3 px-4">
+                        <Badge
+                          className={DEAL_STATUS_CONFIG[deal.status as keyof typeof DEAL_STATUS_CONFIG].color}
+                        >
+                          {DEAL_STATUS_CONFIG[deal.status as keyof typeof DEAL_STATUS_CONFIG].label}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Link href={`/deals/${deal.id}`}>
+                          <Button variant="outline" size="sm">
+                            View
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
-
-function MetricCard({
-  title,
-  value,
-  subtitle,
-}: {
-  title: string
-  value: string
-  subtitle: string
-}) {
-  return (
-    <Card className="hover:shadow-lg transition-shadow duration-200 border-l-4 border-l-primary">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold text-gray-900">{value}</div>
-        <p className="text-xs text-gray-500 mt-2">{subtitle}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function PipelineStatus({ status, count }: { status: string; count: number }) {
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    to_do: { label: 'To Do', color: 'bg-gray-100 text-gray-800' },
-    done: { label: 'Done', color: 'bg-yellow-100 text-yellow-800' },
-    signed: { label: 'Signed', color: 'bg-blue-100 text-blue-800' },
-    installed: { label: 'Installed', color: 'bg-green-100 text-green-800' },
-    invoiced: { label: 'Invoiced', color: 'bg-orange-100 text-orange-800' },
-    paid: { label: 'Paid', color: 'bg-emerald-100 text-emerald-800' },
-  }
-
-  const config = (statusConfig[status] || statusConfig.to_do) as { label: string; color: string }
-
-  return (
-    <div className="text-center">
-      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${config.color} mb-2`}>
-        <span className="text-lg font-bold">{count}</span>
-      </div>
-      <p className="text-sm font-medium text-gray-700">{config.label}</p>
