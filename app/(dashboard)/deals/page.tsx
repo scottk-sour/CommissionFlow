@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +52,7 @@ export default async function DealsPage() {
           </h1>
           <p className="text-gray-600 mt-1">Manage your sales pipeline</p>
         </div>
-        <Link href="/app/deals/new">
+        <Link href="/deals/new">
           <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow">
             + Add New Deal
           </Button>
@@ -70,7 +72,7 @@ export default async function DealsPage() {
               description="Get started by creating your first deal to track commissions and pipeline progress."
               action={{
                 label: '+ Add New Deal',
-                href: '/app/deals/new',
+                href: '/deals/new',
               }}
             />
           ) : (
@@ -109,7 +111,7 @@ export default async function DealsPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
-                        <Link href={`/app/deals/${deal.id}`}>
+                        <Link href={`/deals/${deal.id}`}>
                           <Button variant="outline" size="sm">
                             View
                           </Button>

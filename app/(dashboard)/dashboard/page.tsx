@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, penceToPounds } from '@/types'
@@ -86,7 +88,7 @@ export default async function DashboardPage() {
           </h1>
           <p className="text-gray-600 mt-1">Overview for {currentMonth}</p>
         </div>
-        <Link href="/app/deals/new">
+        <Link href="/deals/new">
           <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow">
             + Add New Deal
           </Button>
@@ -140,13 +142,13 @@ export default async function DashboardPage() {
           <CardTitle className="text-xl">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
-          <Link href="/app/deals">
+          <Link href="/deals">
             <Button variant="outline">View All Deals</Button>
           </Link>
-          <Link href="/app/reports">
+          <Link href="/reports">
             <Button variant="outline">Generate Commission Report</Button>
           </Link>
-          <Link href="/app/team">
+          <Link href="/team">
             <Button variant="outline">Manage Team</Button>
           </Link>
         </CardContent>

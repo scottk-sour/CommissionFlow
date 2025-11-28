@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createServerClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, penceToPounds } from '@/types'
@@ -51,7 +53,7 @@ export default async function ReportsPage() {
         description="There was an issue loading your commission data. Please try again later."
         action={{
           label: 'Back to Dashboard',
-          href: '/app/dashboard',
+          href: '/dashboard',
         }}
       />
     )

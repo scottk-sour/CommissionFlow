@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatCurrency } from '@/types'
+import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -111,7 +111,7 @@ export default function NewDealPage() {
         description: `${formData.customerName} has been added successfully.`,
       })
 
-      router.push('/app/deals')
+      router.push('/deals')
       router.refresh()
     } catch (err: any) {
       setError(err.message)
