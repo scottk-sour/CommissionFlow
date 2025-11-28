@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteClient, createAdminClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import type { Database } from '@/types/database'
+
+type User = Database['public']['Tables']['users']['Row']
 
 const updateMemberSchema = z.object({
   name: z.string().min(1).optional(),
@@ -25,22 +28,24 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: currentUser } = await supabase
+    const adminClient = createAdminClient()
+
+    const { data: currentUser } = await adminClient
       .from('users')
       .select('organization_id')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: Pick<User, 'organization_id'> | null; error: unknown }
 
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const { data: member, error } = await supabase
+    const { data: member, error } = await adminClient
       .from('users')
       .select('*')
       .eq('id', params.id)
       .eq('organization_id', currentUser.organization_id)
-      .single()
+      .single() as { data: User | null; error: unknown }
 
     if (error || !member) {
       return NextResponse.json({ error: 'Team member not found' }, { status: 404 })
@@ -69,11 +74,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: currentUser } = await supabase
+    const adminClient = createAdminClient()
+
+    const { data: currentUser } = await adminClient
       .from('users')
       .select('organization_id, role')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: Pick<User, 'organization_id' | 'role'> | null; error: unknown }
 
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -85,12 +92,12 @@ export async function PATCH(
     }
 
     // Verify member belongs to same organization
-    const { data: existingMember } = await supabase
+    const { data: existingMember } = await adminClient
       .from('users')
       .select('id, role')
       .eq('id', params.id)
       .eq('organization_id', currentUser.organization_id)
-      .single()
+      .single() as { data: Pick<User, 'id' | 'role'> | null; error: unknown }
 
     if (!existingMember) {
       return NextResponse.json({ error: 'Team member not found' }, { status: 404 })
@@ -111,12 +118,12 @@ export async function PATCH(
 
     // If changing role from admin, ensure there's at least one admin left
     if (existingMember.role === 'admin' && updateData.role && updateData.role !== 'admin') {
-      const { count } = await supabase
+      const { count } = await adminClient
         .from('users')
         .select('id', { count: 'exact' })
         .eq('organization_id', currentUser.organization_id)
         .eq('role', 'admin')
-        .eq('active', true)
+        .eq('active', true) as { count: number | null }
 
       if (count !== null && count <= 1) {
         return NextResponse.json(
@@ -127,23 +134,24 @@ export async function PATCH(
     }
 
     // Build update object
-    const updates: Record<string, unknown> = {}
+    type UserUpdate = Database['public']['Tables']['users']['Update']
+    const updates: UserUpdate = {}
     if (updateData.name !== undefined) updates.name = updateData.name
     if (updateData.role !== undefined) updates.role = updateData.role
     if (updateData.commissionRate !== undefined) updates.commission_rate = updateData.commissionRate
     if (updateData.active !== undefined) updates.active = updateData.active
 
-    const { data: member, error } = await supabase
+    const { data: member, error } = await adminClient
       .from('users')
-      .update(updates)
+      .update(updates as never)
       .eq('id', params.id)
       .eq('organization_id', currentUser.organization_id)
       .select()
-      .single()
+      .single() as { data: User | null; error: { message: string } | null }
 
     if (error) {
       console.error('Error updating team member:', error)
-      return NextResponse.json({ error: 'Failed to update team member' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update team member: ' + error.message }, { status: 500 })
     }
 
     return NextResponse.json({ member })

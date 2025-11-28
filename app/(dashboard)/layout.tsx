@@ -51,6 +51,7 @@ export default async function DashboardLayout({
                 <NavLink href="/deals">Deals</NavLink>
                 <NavLink href="/reports">Reports</NavLink>
                 <NavLink href="/team">Team</NavLink>
+                <NavLink href="/settings/commission-rules">Settings</NavLink>
               </div>
             </div>
 

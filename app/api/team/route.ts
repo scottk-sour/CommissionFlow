@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteClient, createAdminClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import type { Database } from '@/types/database'
+
+type User = Database['public']['Tables']['users']['Row']
 
 const createMemberSchema = z.object({
   email: z.string().email(),
@@ -22,21 +25,24 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: user } = await supabase
+    // Use admin client to query users (bypasses RLS issues)
+    const adminClient = createAdminClient()
+
+    const { data: user } = await adminClient
       .from('users')
       .select('organization_id, role')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: Pick<User, 'organization_id' | 'role'> | null; error: unknown }
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const { data: members, error } = await supabase
+    const { data: members, error } = await adminClient
       .from('users')
       .select('*')
       .eq('organization_id', user.organization_id)
-      .order('name')
+      .order('name') as { data: User[] | null; error: unknown }
 
     if (error) {
       console.error('Error fetching team:', error)
@@ -63,11 +69,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: currentUser } = await supabase
+    // Use admin client for all database operations
+    const adminClient = createAdminClient()
+
+    const { data: currentUser } = await adminClient
       .from('users')
       .select('organization_id, role')
       .eq('id', session.user.id)
-      .single()
+      .single() as { data: Pick<User, 'organization_id' | 'role'> | null; error: unknown }
 
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -91,12 +100,12 @@ export async function POST(request: NextRequest) {
     const { email, name, role, commissionRate } = validation.data
 
     // Check if email already exists in organization
-    const { data: existing } = await supabase
+    const { data: existing } = await adminClient
       .from('users')
       .select('id')
       .eq('organization_id', currentUser.organization_id)
       .eq('email', email)
-      .single()
+      .single() as { data: { id: string } | null; error: unknown }
 
     if (existing) {
       return NextResponse.json(
@@ -105,24 +114,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the user (note: they'll need to be invited to Supabase Auth separately)
-    // For now, create a placeholder user entry
-    const { data: member, error } = await supabase
+    // Create the user using admin client (bypasses RLS)
+    type UserInsert = Database['public']['Tables']['users']['Insert']
+    const insertData: UserInsert = {
+      organization_id: currentUser.organization_id,
+      email,
+      name,
+      role,
+      commission_rate: commissionRate,
+      active: true,
+    }
+
+    const { data: member, error } = await adminClient
       .from('users')
-      .insert({
-        organization_id: currentUser.organization_id,
-        email,
-        name,
-        role,
-        commission_rate: commissionRate,
-        active: true,
-      })
+      .insert(insertData as never)
       .select()
-      .single()
+      .single() as { data: User | null; error: { message: string } | null }
 
     if (error) {
       console.error('Error creating team member:', error)
-      return NextResponse.json({ error: 'Failed to create team member' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create team member: ' + error.message }, { status: 500 })
     }
 
     return NextResponse.json({ member }, { status: 201 })

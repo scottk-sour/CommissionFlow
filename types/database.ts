@@ -279,7 +279,30 @@ export interface Database {
           ip_address?: string | null
           user_agent?: string | null
         }
+        Update: {
+          organization_id?: string | null
+          user_id?: string | null
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          old_value?: Json | null
+          new_value?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+        }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
